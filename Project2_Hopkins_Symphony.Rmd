@@ -1,0 +1,111 @@
+---
+title: "Project 2"
+author: "Symphony Hopkins"
+date: "2023-03-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+**Read the dataset in Portland_Cement_Data.csv Download Portland_Cement_Data.csv into R. Name the loaded data Portland_Cement. And use head() function to show the first 6 rows.**
+
+```{r, include = TRUE, echo = TRUE}
+#importing dataset
+Portland_Cement <- read.csv("~/Documents/Maryville_University/DSCI_618/Portland_Cement_Data.csv")
+
+#displaying first 6 rows
+head(x=Portland_Cement, n=6)
+```
+
+**Examine Data Graphically using strip charts, box plots, or other charts that can help you check if mixing techniques affect the strength of the cement.**
+
+For this question, we will create a box plot.
+
+```{r, include = TRUE, echo = TRUE}
+#importing library
+library(ggplot2)
+#converting Mixing column to a factor
+Portland_Cement$Mixing <- as.factor(Portland_Cement$Mixing)
+#creating boxplot
+ggplot(data=Portland_Cement, mapping=aes(x=Mixing, y=Strength)) + 
+  geom_boxplot() + labs(title='Mixing Techniques vs Cement Strength')+
+  stat_summary(geom='point', fun=mean)
+```
+
+From the box plots, it seems that the different mixing techniques affect the cement's strength; however, we will have to confirm this with additional testing.
+
+**Test the hypothesis that mixing techniques affect the strength of the cement. Use α = 0.05**
+
+```{r, include = TRUE, echo = TRUE}
+#creating ANOVA model
+Portland_Cement_AOV <- aov(Strength~Mixing, data = Portland_Cement)
+summary(Portland_Cement_AOV)
+```
+Our p-value, 0.000489, is less than our significance level (α = 0.05), which means that we reject the null hypothesis and conclude that the treatment means differ.
+
+**Construct a normal probability plot of the residuals (Normal Q-Q Plot). What conclusion would you draw about the validity of the Normality assumption?**
+
+```{r, include = TRUE, echo = TRUE}
+#creating Normal Q-Q Plot
+plot(Portland_Cement_AOV, which=c(2))
+```
+
+For the most part, the data follows along the line, so the Normality assumption is correct.
+
+**Plot the residuals versus the predicted tensile strength (Residuals vs Fitted). Comment on the plot.**
+
+```{r, include = TRUE, echo = TRUE}
+#creating Residuals vs Fitted Plot
+plot(Portland_Cement_AOV, which=c(1))
+```
+
+The data points don't have any distinct patterns and they are evenly spread, which is a good indication that we don't have any non-linear relationships.
+
+**Prepare a scatter plot of the residuals (Scale-Location plot). What conclusion would you draw about the validity of the Homoscedasticity assumption?**
+
+```{r, include = TRUE, echo = TRUE}
+plot(Portland_Cement_AOV, which=c(3))
+```
+
+We can conclude that the Homoscedasticity assumption is correct because the points are spread apart and there is a mostly horizontal line.
+
+**Check if the following statements are true:**
+
+* **The mean strength of Mixing Technique 1 differs significantly from Mixing Technique 3 at α = 0.05 level.**
+* **The mean strength of Mixing Technique 2 differs significantly from Mixing Technique 4 at α = 0.05 level.**
+* **The average of Mixing Technique 1 and 3 differs significantly from the mean strength of Technique 2 at α = 0.05 level.**
+
+```{r, include = TRUE, echo = TRUE}
+
+#assigning contrasts
+tech_1_vs_tech_3 <- c(1,0,-1,0)
+tech_2_vs_tech_4 <- c(0,1,0,-1)
+tech_1_3_vs_tech_2 <- c(1,0,1,-2)
+contrasts(Portland_Cement$Mixing) <- cbind(tech_1_vs_tech_3, tech_2_vs_tech_4,tech_1_3_vs_tech_2)
+contrasts(Portland_Cement$Mixing)
+
+#checking if mean strengths significantly differ
+Portland_Cement_AOV_Contrasts <- aov(Strength ~ Mixing, data=Portland_Cement)
+summary.lm(Portland_Cement_AOV_Contrasts)
+
+```
+
+From the results, we found the following:
+
+* With a p-value of 0.650146, we conclude that the mean strength of Mixing Technique 1 *does not* differs significantly from Mixing Technique 3; therefore, we fail to reject the null hypothesis.
+* With a p-value of 0.000636, we conclude that the mean strength of Mixing Technique 2 *does* differs significantly from Mixing Technique 4; therefore, we reject the null hypothesis.
+* With a p-value of 0.481602, we conclude that the average of Mixing Technique 1 and 3 *does not * differ significantly from the mean strength of Technique 2; therefore, we fail to reject the null hypothesis.
+
+**Calculate the Power of the analysis given the treatment means are μ1 = 2900 μ2 = 3100 μ3 = 2850 and μ4 = 2680, error variance = 230^2,and α = 0.05**
+
+```{r, include = TRUE, echo = TRUE}
+#calculating power of analysis
+treatment_means <- c(2900,3100,2850,2680)
+Portland_Cement_PA <- power.anova.test(groups=4, n=4, between.var=var(treatment_means), within.var=230^2, sig.level=.05)
+Portland_Cement_PA
+```
+
+The results above show us that we have a 43.5% chance to get a significant result with the current settings.
+
